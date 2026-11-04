@@ -149,7 +149,7 @@ package: $(BUILD_DIR)/app.elf
 # (release/next_version.py) so it never matches the published release.
 # Works with BENCH=1 and MAKEANDPLAY=1 too.
 package-test:
-	$(MAKE) package CORE_VERSION=$$(python3 $(OPENFPGA_ROOT)/release/next_version.py)
+	version="$$(python3 $(OPENFPGA_ROOT)/release/next_version.py)" && $(MAKE) package CORE_VERSION="$$version"
 
 # The game's button fonts with Pocket glyphs added; the output is committed.
 button-fonts:
