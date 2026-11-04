@@ -142,8 +142,22 @@ deps:
 
 # The SD card tree in build/sd, without game data.
 package: $(BUILD_DIR)/app.elf
-	BENCH=$(BENCH) MAKEANDPLAY=$(MAKEANDPLAY) MAKEANDPLAY_ASSETS="$(MAKEANDPLAY_ASSETS)" \
+	BENCH=$(BENCH) MAKEANDPLAY=$(MAKEANDPLAY) MAKEANDPLAY_ASSETS="$(MAKEANDPLAY_ASSETS)" CORE_VERSION="$(CORE_VERSION)" \
 		PACKAGE_ELF="$(BUILD_DIR)/app.elf" PACKAGE_OUT="$(BUILD_DIR)/sd" bash $(OPENFPGA_ROOT)/scripts/package.sh
+
+# Device test builds number themselves with pocket-dev-tools' shared
+# pocket_version.py, so every Pocket port follows one rule. Set
+# POCKET_DEV_TOOLS_ROOT, or keep a pocket-dev-tools checkout next to this one.
+POCKET_DEV_TOOLS_ROOT ?= $(or $(POCKET_HARNESS_ROOT),$(patsubst %/pocket_version.py,%,$(firstword \
+	$(wildcard $(dir $(abspath $(OPENFPGA_ROOT)/..))pocket-dev-tools/pocket_version.py $(dir $(abspath $(OPENFPGA_ROOT)/..))pocket-harness/pocket_version.py))))
+
+# The same tree for device testing: core.json reports <next>-rc.<N> so it
+# never matches the published release. Works with BENCH=1 and MAKEANDPLAY=1 too.
+package-test:
+	@test -f "$(POCKET_DEV_TOOLS_ROOT)/pocket_version.py" || { \
+		echo "package-test needs pocket_version.py from a pocket-dev-tools checkout: set POCKET_DEV_TOOLS_ROOT or clone it next to this repository" >&2; exit 1; }
+	version="$$(python3 "$(POCKET_DEV_TOOLS_ROOT)/pocket_version.py" --repo $(OPENFPGA_ROOT)/..)" && \
+		$(MAKE) package CORE_VERSION="$$version"
 
 # The game's button fonts with Pocket glyphs added; the output is committed.
 button-fonts:
@@ -413,4 +427,4 @@ $(HOST_RESOURCE_LINKS):
 clean: sdk-clean
 	rm -rf $(BUILD_DIR)
 
-.PHONY: all deps package button-fonts test host render-test host-render clean
+.PHONY: all deps package package-test button-fonts test host render-test host-render clean

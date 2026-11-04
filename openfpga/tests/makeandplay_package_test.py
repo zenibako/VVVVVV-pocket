@@ -167,6 +167,49 @@ class EditionPackagingTests(unittest.TestCase):
         bad = subprocess.run(args + ["BENCH=1", "print-edition"], input=target + "\n", capture_output=True, text=True)
         self.assertNotEqual(bad.returncode, 0)
 
+    def test_test_build_version_stamps_game_and_bench_cores(self):
+        for bench, core_id in ((False, "zenibako.vvvvvv"), (True, "zenibako.vvvvvvbench")):
+            result = self.package(bench=bench, output=core_id, CORE_VERSION="0.2.1-rc.4")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            core = json.loads((self.repo / core_id / "Cores" / core_id / "core.json").read_text())
+            self.assertEqual(core["core"]["metadata"]["version"], "0.2.1-rc.4")
+        plain = self.package(output="plain")
+        self.assertEqual(plain.returncode, 0, plain.stderr)
+        committed = json.loads((ROOT / "dist/core/core.json").read_text())["core"]["metadata"]["version"]
+        core = json.loads((self.repo / "plain/Cores/zenibako.vvvvvv/core.json").read_text())
+        self.assertEqual(core["core"]["metadata"]["version"], committed)
+        for version in ("0.2.1 test", "1.2.3-rc." + "9" * 23):
+            bad = self.package(output="plain", CORE_VERSION=version)
+            self.assertNotEqual(bad.returncode, 0)
+            # Rejected before the previous tree is removed.
+            self.assertTrue((self.repo / "plain/Cores/zenibako.vvvvvv/core.json").is_file())
+
+
+class PackageTestVersionTests(unittest.TestCase):
+    """make package-test takes its version from pocket-dev-tools."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.tools = Path(self.temp.name)
+
+    def package_test(self, tools):
+        return subprocess.run(["make", "-C", str(ROOT), "package-test", f"POCKET_DEV_TOOLS_ROOT={tools}"], capture_output=True, text=True)
+
+    def test_explains_a_missing_checkout(self):
+        result = self.package_test(self.tools / "missing")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("POCKET_DEV_TOOLS_ROOT", result.stderr)
+
+    def test_stops_when_the_shared_script_fails(self):
+        # A stand-in; pocket-dev-tools tests the real script.
+        (self.tools / "pocket_version.py").write_text(
+            "import sys\nprint('pocket_version: no tag', file=sys.stderr)\nsys.exit(1)\n")
+        result = self.package_test(self.tools)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("pocket_version: no tag", result.stderr)
+        self.assertNotIn("make[1]", result.stdout)  # package never ran
+
 
 if __name__ == "__main__":
     unittest.main()
