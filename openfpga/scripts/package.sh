@@ -62,6 +62,25 @@ INSTANCE_DIR="$OUT/Assets/$PLATFORM_ID/$CORE_ID"
 mkdir -p "$CORE_DIR" "$COMMON_DIR" "$INSTANCE_DIR" "$OUT/Platforms/_images"
 
 cp "$OPENFPGA_ROOT"/dist/core/*.json "$CORE_DIR/"
+if [[ -n "${CORE_VERSION:-}" ]]; then
+    # A device test build (make package-test) reports its own <next>-rc.<N>
+    # version so Pocket tools can tell it from the published release.
+    [[ "$CORE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || {
+        echo "CORE_VERSION must be MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-rc.N" >&2
+        exit 1
+    }
+    python3 - "$CORE_DIR/core.json" "$CORE_VERSION" <<'PY'
+import json
+import pathlib
+import sys
+
+path, version = pathlib.Path(sys.argv[1]), sys.argv[2]
+core = json.loads(path.read_text())
+core["core"]["metadata"]["version"] = version
+path.write_text(json.dumps(core, indent=4) + "\n")
+PY
+    echo "Test build version: $CORE_VERSION"
+fi
 cp "$RUNTIME_DIR/os20.rbf_r" "$RUNTIME_DIR/loader.bin" "$CORE_DIR/"
 cp "$GAME_ROOT/../LICENSE.md" "$CORE_DIR/LICENSE.txt"
 cp "$OPENFPGA_ROOT/dist/platforms/vvvvvv.json" "$OUT/Platforms/$PLATFORM_ID.json"

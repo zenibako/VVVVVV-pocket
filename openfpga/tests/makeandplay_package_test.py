@@ -167,6 +167,54 @@ class EditionPackagingTests(unittest.TestCase):
         bad = subprocess.run(args + ["BENCH=1", "print-edition"], input=target + "\n", capture_output=True, text=True)
         self.assertNotEqual(bad.returncode, 0)
 
+    def test_test_build_version_stamps_game_and_bench_cores(self):
+        for bench, core_id in ((False, "zenibako.vvvvvv"), (True, "zenibako.vvvvvvbench")):
+            result = self.package(bench=bench, output=core_id, CORE_VERSION="0.2.1-rc.4")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            core = json.loads((self.repo / core_id / "Cores" / core_id / "core.json").read_text())
+            self.assertEqual(core["core"]["metadata"]["version"], "0.2.1-rc.4")
+        plain = self.package(output="plain")
+        self.assertEqual(plain.returncode, 0, plain.stderr)
+        committed = json.loads((ROOT / "dist/core/core.json").read_text())["core"]["metadata"]["version"]
+        core = json.loads((self.repo / "plain/Cores/zenibako.vvvvvv/core.json").read_text())
+        self.assertEqual(core["core"]["metadata"]["version"], committed)
+        bad = self.package(output="bad", CORE_VERSION="0.2.1 test")
+        self.assertNotEqual(bad.returncode, 0)
+
+
+class NextVersionTests(unittest.TestCase):
+    """release/next_version.py numbers test builds as <next>-rc.<N>."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.repo = Path(self.temp.name)
+        (self.repo / "openfpga/release").mkdir(parents=True)
+        shutil.copyfile(ROOT / "release/next_version.py", self.repo / "openfpga/release/next_version.py")
+        self.git("init", "-q")
+        self.commit("release")
+        self.git("tag", "v0.2.0")
+
+    def git(self, *args):
+        subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@t", *args],
+                       check=True, capture_output=True)
+
+    def commit(self, message):
+        self.git("commit", "-q", "--allow-empty", "-m", message)
+
+    def version(self, **env):
+        return subprocess.run(["python3", "-I", str(self.repo / "openfpga/release/next_version.py")],
+                              env={**os.environ, **env}, check=True, capture_output=True,
+                              text=True).stdout.strip()
+
+    def test_counts_commits_since_the_last_release(self):
+        self.assertEqual(self.version(), "0.2.1-rc.0")
+        self.commit("one")
+        self.commit("two")
+        self.git("tag", "v0.2.1-rc.2")
+        self.assertEqual(self.version(), "0.2.1-rc.2")
+        self.assertEqual(self.version(NEXT_VERSION="0.3.0"), "0.3.0-rc.2")
+
 
 if __name__ == "__main__":
     unittest.main()

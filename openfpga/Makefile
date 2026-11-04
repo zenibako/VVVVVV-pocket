@@ -142,8 +142,14 @@ deps:
 
 # The SD card tree in build/sd, without game data.
 package: $(BUILD_DIR)/app.elf
-	BENCH=$(BENCH) MAKEANDPLAY=$(MAKEANDPLAY) MAKEANDPLAY_ASSETS="$(MAKEANDPLAY_ASSETS)" \
+	BENCH=$(BENCH) MAKEANDPLAY=$(MAKEANDPLAY) MAKEANDPLAY_ASSETS="$(MAKEANDPLAY_ASSETS)" CORE_VERSION="$(CORE_VERSION)" \
 		PACKAGE_ELF="$(BUILD_DIR)/app.elf" PACKAGE_OUT="$(BUILD_DIR)/sd" bash $(OPENFPGA_ROOT)/scripts/package.sh
+
+# The same tree for device testing: core.json reports <next>-rc.<N>
+# (release/next_version.py) so it never matches the published release.
+# Works with BENCH=1 and MAKEANDPLAY=1 too.
+package-test:
+	$(MAKE) package CORE_VERSION=$$(python3 $(OPENFPGA_ROOT)/release/next_version.py)
 
 # The game's button fonts with Pocket glyphs added; the output is committed.
 button-fonts:
