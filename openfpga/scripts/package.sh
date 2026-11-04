@@ -47,6 +47,18 @@ fi
 for file in os20.rbf_r loader.bin os.bin; do
     [[ -f "$RUNTIME_DIR/$file" ]] || { echo "Missing the Pocket runtime; run make deps" >&2; exit 1; }
 done
+if [[ -n "${CORE_VERSION:-}" ]]; then
+    # Test builds (make package-test) report <next>-rc.<N>. Check the value
+    # before anything is deleted or written.
+    [[ "$CORE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || {
+        echo "CORE_VERSION must be MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-rc.N" >&2
+        exit 1
+    }
+    (( ${#CORE_VERSION} <= 31 )) || {
+        echo "CORE_VERSION must be 31 characters or fewer" >&2
+        exit 1
+    }
+fi
 
 FINAL_OUT="$OUT"
 if [[ "${MAKEANDPLAY:-0}" == 1 ]]; then
@@ -63,12 +75,8 @@ mkdir -p "$CORE_DIR" "$COMMON_DIR" "$INSTANCE_DIR" "$OUT/Platforms/_images"
 
 cp "$OPENFPGA_ROOT"/dist/core/*.json "$CORE_DIR/"
 if [[ -n "${CORE_VERSION:-}" ]]; then
-    # A device test build (make package-test) reports its own <next>-rc.<N>
-    # version so Pocket tools can tell it from the published release.
-    [[ "$CORE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || {
-        echo "CORE_VERSION must be MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-rc.N" >&2
-        exit 1
-    }
+    # Stamp the test build's own version so Pocket tools can tell it from
+    # the published release.
     python3 - "$CORE_DIR/core.json" "$CORE_VERSION" <<'PY'
 import json
 import pathlib

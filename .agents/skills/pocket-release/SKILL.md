@@ -28,12 +28,14 @@ skill needs an explicit update; a matching directory name alone is insufficient.
 
 ## Test builds
 
-Build device test zips (game, `BENCH=1` bench core and `MAKEANDPLAY=1`) with
-`make -C openfpga package-test`, never plain `package`. core.json then reports
+Build device test trees (game, `BENCH=1` bench core and `MAKEANDPLAY=1`) with
+`make -C openfpga package-test`, never plain `package`. It writes the SD tree
+(`openfpga/build/sd`, or `build/makeandplay/sd`); zip that tree's contents for
+the device. core.json then reports
 `<next>-rc.<N>` from `openfpga/release/next_version.py`: N counts the commits
 since the last `vX.Y.Z` tag, the next version is the last release with its
 patch bumped, and `NEXT_VERSION=X.Y.Z` overrides it for a minor or major
-release. Run `git fetch --tags` if no tag is found. Name the zip after that
+release. Run `git fetch --tags` if no tag is found (`git fetch --unshallow --tags` in a shallow clone). Name the zip after that
 version and the short commit, for example
 `vvvvvv-pocket-v0.2.1-rc.3-<sha>-<topic>.zip`. Pocket Sync still offers the
 published release as an update to a test build; that is expected. Release

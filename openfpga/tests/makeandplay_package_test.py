@@ -178,8 +178,11 @@ class EditionPackagingTests(unittest.TestCase):
         committed = json.loads((ROOT / "dist/core/core.json").read_text())["core"]["metadata"]["version"]
         core = json.loads((self.repo / "plain/Cores/zenibako.vvvvvv/core.json").read_text())
         self.assertEqual(core["core"]["metadata"]["version"], committed)
-        bad = self.package(output="bad", CORE_VERSION="0.2.1 test")
-        self.assertNotEqual(bad.returncode, 0)
+        for version in ("0.2.1 test", "1.2.3-rc." + "9" * 23):
+            bad = self.package(output="plain", CORE_VERSION=version)
+            self.assertNotEqual(bad.returncode, 0)
+            # Rejected before the previous tree is removed.
+            self.assertTrue((self.repo / "plain/Cores/zenibako.vvvvvv/core.json").is_file())
 
 
 class NextVersionTests(unittest.TestCase):

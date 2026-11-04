@@ -34,7 +34,7 @@ def parse(version, what):
 def main():
     tags = [tag for tag in git("tag", "--merged", "HEAD", "--list", "v*").split() if STABLE.fullmatch(tag)]
     if not tags:
-        raise SystemExit("no vX.Y.Z release tag reachable from HEAD; run `git fetch --tags`")
+        raise SystemExit("no vX.Y.Z release tag reachable from HEAD; run `git fetch --tags` (`git fetch --unshallow --tags` in a shallow clone)")
     tag = max(tags, key=lambda name: parse(name, "tag"))
     last = parse(tag, "tag")
     if os.environ.get("NEXT_VERSION"):
@@ -46,7 +46,7 @@ def main():
     count = int(git("rev-list", "--count", f"{tag}..HEAD"))
     version = "%d.%d.%d-rc.%d" % (*next_version, count)
     if len(version) > 31:
-        raise SystemExit(f"version is longer than core.json allows: {version}")
+        raise SystemExit(f"version is longer than the 31 characters core.json allows: {version}")
     print(version)
 
 

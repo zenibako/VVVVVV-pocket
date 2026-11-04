@@ -419,4 +419,4 @@ $(HOST_RESOURCE_LINKS):
 clean: sdk-clean
 	rm -rf $(BUILD_DIR)
 
-.PHONY: all deps package button-fonts test host render-test host-render clean
+.PHONY: all deps package package-test button-fonts test host render-test host-render clean
