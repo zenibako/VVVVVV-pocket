@@ -185,38 +185,30 @@ class EditionPackagingTests(unittest.TestCase):
             self.assertTrue((self.repo / "plain/Cores/zenibako.vvvvvv/core.json").is_file())
 
 
-class NextVersionTests(unittest.TestCase):
-    """release/next_version.py numbers test builds as <next>-rc.<N>."""
+class PackageTestVersionTests(unittest.TestCase):
+    """make package-test takes its version from pocket-dev-tools."""
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.repo = Path(self.temp.name)
-        (self.repo / "openfpga/release").mkdir(parents=True)
-        shutil.copyfile(ROOT / "release/next_version.py", self.repo / "openfpga/release/next_version.py")
-        self.git("init", "-q")
-        self.commit("release")
-        self.git("tag", "v0.2.0")
+        self.tools = Path(self.temp.name)
 
-    def git(self, *args):
-        subprocess.run(["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@t", *args],
-                       check=True, capture_output=True)
+    def package_test(self, tools):
+        return subprocess.run(["make", "-C", str(ROOT), "package-test", f"POCKET_DEV_TOOLS_ROOT={tools}"], capture_output=True, text=True)
 
-    def commit(self, message):
-        self.git("commit", "-q", "--allow-empty", "-m", message)
+    def test_explains_a_missing_checkout(self):
+        result = self.package_test(self.tools / "missing")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("POCKET_DEV_TOOLS_ROOT", result.stderr)
 
-    def version(self, **env):
-        return subprocess.run(["python3", "-I", str(self.repo / "openfpga/release/next_version.py")],
-                              env={**os.environ, **env}, check=True, capture_output=True,
-                              text=True).stdout.strip()
-
-    def test_counts_commits_since_the_last_release(self):
-        self.assertEqual(self.version(), "0.2.1-rc.0")
-        self.commit("one")
-        self.commit("two")
-        self.git("tag", "v0.2.1-rc.2")
-        self.assertEqual(self.version(), "0.2.1-rc.2")
-        self.assertEqual(self.version(NEXT_VERSION="0.3.0"), "0.3.0-rc.2")
+    def test_stops_when_the_shared_script_fails(self):
+        # A stand-in; pocket-dev-tools tests the real script.
+        (self.tools / "pocket_version.py").write_text(
+            "import sys\nprint('pocket_version: no tag', file=sys.stderr)\nsys.exit(1)\n")
+        result = self.package_test(self.tools)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("pocket_version: no tag", result.stderr)
+        self.assertNotIn("make[1]", result.stdout)  # package never ran
 
 
 if __name__ == "__main__":

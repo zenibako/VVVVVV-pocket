@@ -32,7 +32,8 @@ Build device test trees (game, `BENCH=1` bench core and `MAKEANDPLAY=1`) with
 `make -C openfpga package-test`, never plain `package`. It writes the SD tree
 (`openfpga/build/sd`, or `build/makeandplay/sd`); zip that tree's contents for
 the device. core.json then reports
-`<next>-rc.<N>` from `openfpga/release/next_version.py`: N counts the commits
+`<next>-rc.<N>` from pocket-dev-tools' shared `pocket_version.py` (set
+`POCKET_DEV_TOOLS_ROOT`, or keep a sibling checkout): N counts the commits
 since the last `vX.Y.Z` tag, the next version is the last release with its
 patch bumped, and `NEXT_VERSION=X.Y.Z` overrides it for a minor or major
 release. Run `git fetch --tags` if no tag is found (`git fetch --unshallow --tags` in a shallow clone). Name the zip after that
