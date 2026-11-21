@@ -41,6 +41,10 @@
 #ifdef POCKET_BENCH
 #include "pocket_bench.h"
 #endif
+#if defined(VVV_POCKET) && !defined(POCKET_BENCH)
+#include "pocket_savestate.h"
+#define POCKET_MEMORIES 1
+#endif
 #include "pocket_bench_profile.h"
 
 scriptclass script;
@@ -862,6 +866,12 @@ int main(int argc, char *argv[])
     gamestate_funcs = get_gamestate_funcs(game.gamestate, &num_gamestate_funcs);
     loop_assign_active_funcs();
 
+#ifdef POCKET_MEMORIES
+    /* After loading, before the first frame: a wake's state is already
+     * waiting when the core starts. */
+    POCKET_SavestateInit();
+#endif
+
 #ifdef SDL_PLATFORM_EMSCRIPTEN
     emscripten_set_main_loop(emscriptenloop, 0, 0);
 #else
@@ -997,6 +1007,10 @@ static void inline deltaloop(void)
 
 static enum LoopCode loop_begin(void)
 {
+#ifdef POCKET_MEMORIES
+    POCKET_SavestatePoll();
+#endif
+
     if (game.inputdelay)
     {
         key.Poll();
