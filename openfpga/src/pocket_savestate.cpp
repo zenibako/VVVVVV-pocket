@@ -202,6 +202,18 @@ bool restore_state(int len)
 
 } /* namespace */
 
+#ifdef POCKET_MEMORY_DIAG
+/* Shown down the top right corner by sdl3/video.c: enable error (negated),
+ * polls in seconds, save requests, last save error (negated, 99 = refused
+ * before saving), load requests, last load result (negated error, or 501
+ * when the restore worked / 500 when it did not). */
+extern "C" int POCKET_memory_diag[6];
+int POCKET_memory_diag[6];
+#define MEMORY_DIAG(i, v) (POCKET_memory_diag[i] = (v))
+#else
+#define MEMORY_DIAG(i, v) ((void) 0)
+#endif
+
 void POCKET_SavestateInit(void)
 {
 #ifdef MAKEANDPLAY
@@ -210,7 +222,9 @@ void POCKET_SavestateInit(void)
     static const char id[] = "VVVVVV-main";
 #endif
     of_savestate_set_id(id, sizeof(id) - 1);
-    enabled = of_savestate_enable(MAX_STATE) == 0;
+    const int rc = of_savestate_enable(MAX_STATE);
+    MEMORY_DIAG(0, -rc);
+    enabled = rc == 0;
     if (!enabled)
     {
         vlog_info("Pocket Memories unavailable on this runtime");
@@ -226,17 +240,27 @@ void POCKET_SavestatePoll(void)
     {
         return;
     }
+#ifdef POCKET_MEMORY_DIAG
+    static int polls;
+    polls++;
+    MEMORY_DIAG(1, polls / 30 % 1000);
+#endif
     switch (of_savestate_poll())
     {
     case OF_SAVESTATE_SAVE:
     {
         const int n = build_state();
+#ifdef POCKET_MEMORY_DIAG
+        POCKET_memory_diag[2]++;
+#endif
         if (n > 0)
         {
-            of_savestate_save(state_buf, (uint32_t) n);
+            const int rc = of_savestate_save(state_buf, (uint32_t) n);
+            MEMORY_DIAG(3, -rc);
         }
         else
         {
+            MEMORY_DIAG(3, 99);
             of_savestate_finish(0);
         }
         break;
@@ -244,9 +268,15 @@ void POCKET_SavestatePoll(void)
     case OF_SAVESTATE_LOAD:
     {
         const int n = of_savestate_load(state_buf, sizeof(state_buf));
+#ifdef POCKET_MEMORY_DIAG
+        POCKET_memory_diag[4]++;
+#endif
+        MEMORY_DIAG(5, -n);
         if (n > 0)
         {
-            of_savestate_finish(restore_state(n) ? 1 : 0);
+            const bool ok = restore_state(n);
+            MEMORY_DIAG(5, ok ? 501 : 500);
+            of_savestate_finish(ok ? 1 : 0);
         }
         break;
     }
