@@ -1008,7 +1008,17 @@ static void inline deltaloop(void)
 static enum LoopCode loop_begin(void)
 {
 #ifdef POCKET_MEMORIES
-    POCKET_SavestatePoll();
+    {
+        /* A loaded Memory can change the state at the start of a sequence
+         * (the list was fetched at the end of the last one, index 0): run
+         * the new state's callbacks rather than the old ones. */
+        const enum GameGamestate before = game.gamestate;
+        POCKET_SavestatePoll();
+        if (game.gamestate != before)
+        {
+            gamestate_funcs = get_gamestate_funcs(game.gamestate, &num_gamestate_funcs);
+        }
+    }
 #endif
 
     if (game.inputdelay)

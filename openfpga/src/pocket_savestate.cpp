@@ -29,8 +29,12 @@
 #include "of_savestate.h"
 
 #include "../../desktop_version/src/Entity.h"
+#include "../../desktop_version/src/FileSystemUtils.h"
+#include "../../desktop_version/src/Font.h"
 #include "../../desktop_version/src/Game.h"
 #include "../../desktop_version/src/Graphics.h"
+#include "../../desktop_version/src/Localization.h"
+#include "../../desktop_version/src/LocalizationStorage.h"
 #include "../../desktop_version/src/Map.h"
 #include "../../desktop_version/src/Music.h"
 #include "../../desktop_version/src/Script.h"
@@ -73,7 +77,11 @@ bool can_save_game(void)
     case GAMEMODE:
     case MAPMODE:
     case TELEPORTERMODE:
-        return !game.ingame_titlemode;
+        return true;
+    case TITLEMODE:
+        /* The options menu opened from the pause screen: a game is in
+         * progress underneath, saved at its last checkpoint. */
+        return game.ingame_titlemode;
     default:
         return false;
     }
@@ -163,7 +171,7 @@ bool restore_state(int len)
 
     if (header.kind == KIND_TITLE)
     {
-        if (game.gamestate != TITLEMODE)
+        if (game.gamestate != TITLEMODE || game.ingame_titlemode)
         {
             game.quittomenu();
             music.play(Music_PRESENTINGVVVVVV);
@@ -184,6 +192,16 @@ bool restore_state(int len)
     {
         vlog_error("Memory does not parse: %s", doc.ErrorStr());
         return false;
+    }
+
+    if (map.custommode)
+    {
+        /* What quittomenu() does, so a custom level's assets don't carry
+         * over into the campaign (its deferred hardreset would undo the
+         * restore, and startgamemode() resets the rest). */
+        FILESYSTEM_unmountAssets();
+        loc::unloadtext_custom();
+        font::unload_custom();
     }
 
     /* The game's Continue path, reading this save instead of qsave.vvv. */
