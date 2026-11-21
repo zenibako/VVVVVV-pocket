@@ -138,6 +138,8 @@ else:
     metadata["shortname"] = "vvvvvvbench"
     metadata["platform_ids"] = [platform]
     metadata["description"] = "VVVVVV benchmark: a scripted run that times its frames and shows the results."
+    # The benchmark build does not answer save-state requests.
+    core["core"]["framework"]["sleep_supported"] = False
     (core_dir / "core.json").write_text(json.dumps(core, indent=4) + "\n")
 PY
 fi
