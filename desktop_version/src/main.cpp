@@ -393,6 +393,12 @@ static void keep_console_open(const bool open_console)
 
 int main(int argc, char *argv[])
 {
+#ifdef POCKET_MEMORIES
+    /* First thing: until it is on, the OS refuses every save at once, and
+     * loading the game takes seconds.  Requests that arrive meanwhile wait
+     * for the first poll (a wake's load is held for 30 seconds). */
+    POCKET_SavestateInit();
+#endif
     char* baseDir = NULL;
     char* assetsPath = NULL;
     char* langDir = NULL;
@@ -865,12 +871,6 @@ int main(int argc, char *argv[])
 
     gamestate_funcs = get_gamestate_funcs(game.gamestate, &num_gamestate_funcs);
     loop_assign_active_funcs();
-
-#ifdef POCKET_MEMORIES
-    /* After loading, before the first frame: a wake's state is already
-     * waiting when the core starts. */
-    POCKET_SavestateInit();
-#endif
 
 #ifdef SDL_PLATFORM_EMSCRIPTEN
     emscripten_set_main_loop(emscriptenloop, 0, 0);
