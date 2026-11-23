@@ -42,6 +42,23 @@ static void start_video(void)
     of_video_set_display_mode(OF_DISPLAY_FRAMEBUFFER);
 }
 
+#if defined(POCKET_SHOW_FPS) || defined(POCKET_MEMORY_DIAG)
+static void draw_number(Uint8 *fb, int stride, int line, int value);
+#endif
+
+#ifdef POCKET_MEMORY_DIAG
+/* MEMORY_DIAG=1: the save-state service's state down the top right corner
+ * (see pocket_savestate.cpp). */
+extern int POCKET_memory_diag[6];
+static void draw_memory_diag(Uint8 *fb, int stride)
+{
+    for (int i = 0; i < 6; i++)
+    {
+        draw_number(fb, stride, i, POCKET_memory_diag[i]);
+    }
+}
+#endif
+
 #ifdef POCKET_SHOW_FPS
 extern Uint32 POCKET_render_us;
 extern Uint32 POCKET_timer_read_us;
@@ -51,6 +68,9 @@ extern int POCKET_saves_written;
 extern int POCKET_saves_failed;
 static Uint32 present_us;
 
+#endif
+
+#if defined(POCKET_SHOW_FPS) || defined(POCKET_MEMORY_DIAG)
 static void draw_number(Uint8 *fb, int stride, int line, int value)
 {
     static const Uint16 digits[10] = {
@@ -90,6 +110,9 @@ static void draw_number(Uint8 *fb, int stride, int line, int value)
     }
 }
 
+#endif
+
+#ifdef POCKET_SHOW_FPS
 /* Once, tenths of a millisecond for a full screen of ARGB8888 by memcpy
  * and by a word fill loop, then for 1000 timer reads. */
 static int bench[3];
@@ -230,6 +253,9 @@ void POCKET_PresentFrame(void)
 #ifdef POCKET_SHOW_FPS
     const Uint32 present_start = of_time_us();
     draw_profile(of_video_surface(), video_mode.stride ? video_mode.stride : POCKET_SCREEN_W * 2);
+#endif
+#ifdef POCKET_MEMORY_DIAG
+    draw_memory_diag(of_video_surface(), video_mode.stride ? video_mode.stride : POCKET_SCREEN_W * 2);
 #endif
     POCKET_GRAV_TIMER_START(flip_start);
     of_video_flip();

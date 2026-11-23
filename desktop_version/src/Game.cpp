@@ -5592,8 +5592,20 @@ void Game::starttrial( int t )
     lifeseq = 0;
 }
 
+#ifdef VVV_POCKET
+/* A Pocket Memory being restored (openfpga/src/pocket_savestate.cpp). */
+tinyxml2::XMLDocument* POCKET_memory_doc = NULL;
+#endif
+
 void Game::loadquick(void)
 {
+#ifdef VVV_POCKET
+    if (POCKET_memory_doc != NULL)
+    {
+        readmaingamesave("Pocket Memory", *POCKET_memory_doc);
+        return;
+    }
+#endif
     tinyxml2::XMLDocument doc;
     if (!FILESYSTEM_loadTiXml2Document("saves/qsave.vvv", doc)) return;
 

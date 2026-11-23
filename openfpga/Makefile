@@ -85,6 +85,14 @@ ifeq ($(MAKEANDPLAY),1)
 OPENFPGA_DEFS += -DMAKEANDPLAY
 endif
 # SHOW_FPS=1 draws the presented frame rate in the top right corner.
+# MEMORY_DIAG=1 shows the save-state service's results (Memories, sleep)
+# in the top right corner; see src/pocket_savestate.cpp.
+# The benchmark does not link the save-state service.
+ifeq ($(MEMORY_DIAG),1)
+ifneq ($(BENCH),1)
+OPENFPGA_DEFS += -DPOCKET_MEMORY_DIAG
+endif
+endif
 ifeq ($(SHOW_FPS),1)
 OPENFPGA_DEFS += -DPOCKET_SHOW_FPS
 endif

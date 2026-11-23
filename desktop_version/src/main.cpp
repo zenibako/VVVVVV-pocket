@@ -41,6 +41,10 @@
 #ifdef POCKET_BENCH
 #include "pocket_bench.h"
 #endif
+#if defined(VVV_POCKET) && !defined(POCKET_BENCH)
+#include "pocket_savestate.h"
+#define POCKET_MEMORIES 1
+#endif
 #include "pocket_bench_profile.h"
 
 scriptclass script;
@@ -389,6 +393,12 @@ static void keep_console_open(const bool open_console)
 
 int main(int argc, char *argv[])
 {
+#ifdef POCKET_MEMORIES
+    /* First thing: until it is on, the OS refuses every save at once, and
+     * loading the game takes seconds.  Requests that arrive meanwhile wait
+     * for the first poll (a wake's load is held for 30 seconds). */
+    POCKET_SavestateInit();
+#endif
     char* baseDir = NULL;
     char* assetsPath = NULL;
     char* langDir = NULL;
@@ -997,6 +1007,20 @@ static void inline deltaloop(void)
 
 static enum LoopCode loop_begin(void)
 {
+#ifdef POCKET_MEMORIES
+    {
+        /* A loaded Memory can change the state at the start of a sequence
+         * (the list was fetched at the end of the last one, index 0): run
+         * the new state's callbacks rather than the old ones. */
+        const enum GameGamestate before = game.gamestate;
+        POCKET_SavestatePoll();
+        if (game.gamestate != before)
+        {
+            gamestate_funcs = get_gamestate_funcs(game.gamestate, &num_gamestate_funcs);
+        }
+    }
+#endif
+
     if (game.inputdelay)
     {
         key.Poll();
