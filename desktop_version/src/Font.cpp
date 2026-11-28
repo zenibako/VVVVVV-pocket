@@ -266,7 +266,7 @@ static bool decode_xml_range(tinyxml2::XMLElement* elem, unsigned* start, unsign
 #ifdef VVV_POCKET
 /* Straight-alpha glyphs can be cached on transparent black only when their
  * coverage is binary; otherwise copying the cache applies alpha twice. */
-static bool binary_glyph_mask(const Font* f, const GlyphInfo* glyph, const SDL_Surface* image)
+static bool binary_glyph_mask(const Font* f, const GlyphInfo* glyph, SDL_Surface* image)
 {
     if (image == NULL || f->glyph_w == 0 || f->glyph_h == 0 || image->w < f->glyph_w)
         return false;
@@ -285,7 +285,7 @@ static bool binary_glyph_mask(const Font* f, const GlyphInfo* glyph, const SDL_S
     return true;
 }
 
-static void mark_binary_glyphs(Font* f, const SDL_Surface* image)
+static void mark_binary_glyphs(Font* f, SDL_Surface* image)
 {
     for (int page = 0; page < FONT_N_PAGES; page++)
     {

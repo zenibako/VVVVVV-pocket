@@ -250,6 +250,58 @@ static void write_pixel(Uint8 *p, int bytes, Uint32 pixel)
     p[2] = (Uint8) (pixel >> 16);
 }
 
+/* DrawPixel and ReadPixel (GraphicsUtil.cpp) go through these since upstream
+ * 8935dc68.  Same values as the old per-bpp code: MapSurfaceRGBA to write,
+ * GetRGBA (alpha 255 without an alpha mask) to read. */
+static Uint8 *pixel_at(SDL_Surface *surface, int x, int y, const SDL_PixelFormatDetails **f)
+{
+    if (surface == NULL || surface->pixels == NULL)
+    {
+        SDL_SetError("Invalid surface");
+        return NULL;
+    }
+    if (x < 0 || y < 0 || x >= surface->w || y >= surface->h)
+    {
+        SDL_SetError("Pixel out of bounds");
+        return NULL;
+    }
+    *f = SDL_GetPixelFormatDetails(surface->format);
+    if (*f == NULL)
+    {
+        return NULL;
+    }
+    return (Uint8 *) surface->pixels + y * surface->pitch + x * (*f)->bytes_per_pixel;
+}
+
+bool SDL_ReadSurfacePixel(SDL_Surface *surface, int x, int y, Uint8 *r, Uint8 *g, Uint8 *b, Uint8 *a)
+{
+    const SDL_PixelFormatDetails *f;
+    const Uint8 *p = pixel_at(surface, x, y, &f);
+    Uint8 cr = 0, cg = 0, cb = 0, ca = 0;
+    if (p == NULL)
+    {
+        return false;
+    }
+    POCKET_GetRGBA(read_pixel(p, f->bytes_per_pixel), f, &cr, &cg, &cb, &ca);
+    if (r) *r = cr;
+    if (g) *g = cg;
+    if (b) *b = cb;
+    if (a) *a = ca;
+    return true;
+}
+
+bool SDL_WriteSurfacePixel(SDL_Surface *surface, int x, int y, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+{
+    const SDL_PixelFormatDetails *f;
+    Uint8 *p = pixel_at(surface, x, y, &f);
+    if (p == NULL)
+    {
+        return false;
+    }
+    write_pixel(p, f->bytes_per_pixel, POCKET_MapRGBA(f, r, g, b, a));
+    return true;
+}
+
 /* Copies (or blends) a w by h block, with nearest scaling when the
  * rectangles differ in size.  Both rectangles are already clipped. */
 static void blit(SDL_Surface *src, const SDL_Rect *sr, SDL_Surface *dst, const SDL_Rect *dr)
